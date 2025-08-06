@@ -32,12 +32,17 @@ from user_defined_test_functions import fun3d_simulation_lift_force
 from user_defined_test_functions import get_rosen_emulator, \
     get_rosen_biv_emulator, return_sum_emulator
 
-# e2nn_models, emulator_functions, x_scale_obj, y_scale_obj
-# e2nn_ensembles, emulator_function_lists, x_scale_objs, y_scale_objs
 
+################################################################################
+""" USER SELECTED OPTIONS """
 
-# fit_gpr
-# predict_gpr
+problem_iters = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+ratio = 4.0   # sample all within factor of 4
+acquisition_function_names = ["E2NN-EMI"]
+
+# ratio = np.inf   # sample all nonconverged
+# acquisition_function_names = ["EMI_E2NN_safe"]
+
 ################################################################################
 """HANDLING FIGURES"""
 
@@ -58,7 +63,7 @@ global_parallel_acquisitions = 0
 
 
 
-def run_egra_problem(acquisition_function_name, problem_iter, ratio):
+def run_active_learning(acquisition_function_name, problem_iter, ratio):
 
 
     ################################################################################
@@ -67,18 +72,14 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
     folder_name = f"{acquisition_function_name}_example_{problem_iter}"
     os.makedirs(folder_name, exist_ok=True)
 
-    ################################################################################
-    """GET FUNCTIONS"""
-
-    # Ndim = 2 #1 #10 #3 #2 #3 #1 #2
-    # Nsamp = 8 #(Ndim+1)*(Ndim+2)//2 #8 #20 #3000 #2000 #1500 #1000 #500 #300 #200 #10*Ndim #6 #20 #8
-
-    # Ntest = 10_000 #1000 #1000 # use fewer when plotting test error convergence
     n_scatter_gauss = 128 #32 #64 #256 #
+
+    ################################################################################
+    """PROBLEM SELECTION (UNCOMMENT THE DISIRED ONE)"""
 
     # (1) 2D rosenbrock
     Ndim = 2 #1 #10 #3 #2 #3 #1 #2
-    Nsamp = 8 #(Ndim+1)*(Ndim+2)//2 #8 #20 #3000 #2000 #1500 #1000 #500 #300 #200 #10*Ndim #6 #20 #8
+    Nsamp = 8 #(Ndim+1)*(Ndim+2)//2 #
     Fs = [constr_rosen_2d]
     lb = -2*np.ones([Ndim])
     ub = 2*np.ones([Ndim])
@@ -89,7 +90,7 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
 
     # # (2) multimodal system
     # Ndim = 2 #1 #10 #3 #2 #3 #1 #2
-    # Nsamp = 8 #(Ndim+1)*(Ndim+2)//2 #8 #20 #3000 #2000 #1500 #1000 #500 #300 #200 #10*Ndim #6 #20 #8
+    # Nsamp = 8 #(Ndim+1)*(Ndim+2)//2 #8 #20 #
     # Fs = [g1, g2, g3]
     # lb = np.array([-3., 0.])
     # ub = np.array([7., 10.])
@@ -98,64 +99,7 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
     # HF_EXPENSIVE = False
     # emulator_function_lists = N_constr*[[uninformative_nd_lf]]
 
-    # # (3) vehicle side impact
-    # #Fs = [lambda x: vehicle_side_impact(x, idx) for idx in range(10)]
-    # Fs = [constr1, constr2, constr3, constr4, constr5, constr6, constr7, constr8, constr9, constr10]
-    # x_mu = np.array([0.5, 1.31, 0.5, 1.395, 0.875, 1.2, 0.4, 0.345, 0.192, 0.0, 0.0])
-    # x_sig = np.array([0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.006, 0.006, 10.0, 10.0])
-    # lb = x_mu - 5*x_sig
-    # ub = x_mu + 5*x_sig
-    # N_constr = len(Fs)
-    # Ndim = 11
-    # Nsamp = (Ndim+1)*(Ndim+2)//2 #8 #20  #1000 #
-    # Ntest = 10_000
-    # HF_EXPENSIVE = False
-    # emulator_function_lists = N_constr*[[uninformative_nd_lf]]
-
-    # # (4) D-dim Rosenbrock
-    # Ndim = 10  #20  #1  #
-    # Nsamp = (Ndim+1)*(Ndim+2)//2 #20 #1000
-    # # Fs = [rosenbrock]
-    # Fs = [constr_rosen_nd]
-    # # Fe = [uninformative_nd_lf]
-    # lb = -2*np.ones([Ndim]) #0.0 # -2 + np.zeros([Ndim]) #np.array([-2, -2])
-    # ub = 2*np.ones([Ndim]) #1.0 #  2 + np.zeros([Ndim]) #np.array([ 2,  2])
-    # N_constr = len(Fs)
-    # Ntest = 10_000
-    # HF_EXPENSIVE = False
-    # # emulator_function_lists = N_constr*[[uninformative_nd_lf]]
-    # univ_em = False
-    # if univ_em:
-    #     emulator_functions = []
-    #     # univariate emulators
-    #     for ii in range(Ndim):
-    #         emulator = get_rosen_emulator(dim=ii, N_DIM=Ndim)
-    #         emulator_functions.append(emulator)
-    #     # sum emulator
-    #     emulator_sum = return_sum_emulator(emulator_functions.copy())
-    #     emulator_functions.append(emulator_sum)
-    # else:
-    #     # univariate emulators
-    #     em_functions_u = []
-    #     for ii in range(Ndim):
-    #         emulator = get_rosen_emulator(dim=ii, N_DIM=Ndim)
-    #         em_functions_u.append(emulator)
-    #     em_functions_b = []
-    #     # bivariate case
-    #     for ii in range(Ndim-1):
-    #         emulator = get_rosen_biv_emulator(dims=(ii, ii+1), N_DIM=Ndim)
-    #         em_functions_b.append(emulator)
-    #     em_sum_b = return_sum_emulator(em_functions_b.copy())
-    #     # v0, no additional emulators (beats v2 for float64)
-    #     emulator_functions = em_functions_u + em_functions_b
-    #     # # v1, additional emulator to approximate true function
-    #     # em_sum_u = return_sum_emulator(em_functions_u.copy())
-    #     # em_sum = lambda x: em_sum_b(x) - em_sum_u(x)
-    #     # emulator_functions = em_functions_u + em_functions_b + [em_sum]
-    #     print(f"Number of emulators: {len(emulator_functions)}")
-    # emulator_function_lists = [emulator_functions]
-
-    # # (5) Aircraft lift force
+    # # (3) Aircraft lift force
     # Ndim = 3
     # Nsamp = (Ndim+1)*(Ndim+2)//2
     # Ntest = 4000
@@ -173,58 +117,8 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
     # emulator_function_lists = N_constr*[[uninformative_nd_lf]]
 
 
-    # #  # Aircraft lift force multi-fidelity
-    # #  Ndim = 3
-    # #  Nsamp = (Ndim+1)*(Ndim+2)//2
-    # #  Ntest = 4000
-    # #  subfolder2 = "GHV_300k_i_CGNS"   #"GHV_34k_i_CGNS"  #
-    # #  out_name2  = "GHV02_300k"   #"GHV_fgrid_coarse01"  #
-    # #  MINIMUM_LIFT = 1e4  #25e6  #N
-    # #  lift_constr = lambda x: fun3d_simulation_lift_force(
-    # #      x, out_name2, subfolder2).flatten() - MINIMUM_LIFT
-    # #  Fs = [lift_constr]
-    # #  lb = np.zeros(Ndim)
-    # #  ub = np.ones(Ndim)
-    # #  N_constr = len(Fs)
-    # #  HF_EXPENSIVE = True
-    # #  HF_NAME = "vis300k"   #"inv300k"   #
-    # 
-    # # ---------- begin lf part
-    # filename_x = "X_test_E2NN_200_3D_samples"   #"X_test_E2NN_4000_3D_samples"   #
-    # filename_y = "Y_test_E2NN_200_3D_samples"   #"Y_test_inv30k_E2NN_4000_3D_samples"  #
-    # with open(filename_x, "rb") as infile:
-    #     X_lf_train = pickle.load(infile)
-    #     # X_lf_train = (ub-lb)*X_lf_train + lb
-    # with open(filename_y, "rb") as infile:
-    #     y_lf_lift = pickle.load(infile)[0]
-    # # filename_train = 'ycl_cd_lf_inviscid_3d.pkl'
-    # # try:
-    # #     with open(filename_train, "rb") as infile:
-    # #         y_lf_cl_cd = pickle.load(infile)
-    # # except:
-    # #     out_name_lf = "GHV_fgrid_coarse01"
-    # #     subfolder_lf = "GHV_34k_i_CGNS"
-    # #     fun_i_ratio = lambda x: -fun3d_simulation_cl_cd(x, out_name_lf,  subfolder_lf)
-    # #     y_lf_cl_cd = fun_i_ratio(X_lf_train)
-    # #     with open(filename_train, "wb") as outfile:
-    # #         pickle.dump(y_lf_cl_cd, outfile)
-    # 
-    # # construct gpr model and train on data
-    # from sklearn.gaussian_process import GaussianProcessRegressor
-    # from sklearn.gaussian_process.kernels import Matern, RBF
-    # 
-    # GPR = GaussianProcessRegressor(   # kernel = Matern()
-    #         kernel=1.0*RBF(1.0), alpha=1e-10, optimizer='fmin_l_bfgs_b',
-    #         n_restarts_optimizer=250) #25) #25
-    # 
-    # GPR.fit(X_lf_train, y_lf_lift) # LD Ratio
-    # 
-    # LF_GPR = lambda x : GPR.predict(x, return_std=False).flatten()
-    # emulator_functions = [LF_GPR]
-    # # ---------- end lf part
-    # emulator_function_lists = [emulator_functions]   #N_constr*[[uninformative_nd_lf]]
-
-
+    ################################################################################
+    """ NEURAL NETWORK SETUP"""
 
     # emulator_function_lists = N_constr*[[uninformative_nd_lf]]
     e2nn_ensembles = N_constr*[None]
@@ -248,12 +142,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
         {"n_layers": 2, "activation": "swish", "freq_factor": np.nan},
     ]
 
-
-    azim_2d = -120 #-150 #-60 # -60 (default) #
-    elev_2d = 20 # 30 (default) #
-    # ax.azim = -60
-    # ax.dist = 10
-    # ax.elev = 30
 
     ################################################################################
     """GET TRAINING DATA"""
@@ -434,30 +322,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
                 if not (fail_1L or fail_2L):
                     frequencies_good = True
 
-        
-        #  # plot actual vs predicted for each constraint
-        #  for c in range(N_constr):
-        #      
-        #      Y_gpr_test, Sig_gpr_test = predict_gpr(GPR_models[c], Xs_test_raw[c], x_stand_objs[c])
-        #      Y_test_raw = Ys_test_raw[c]
-        #      gpr_test_nrmse = NRMSE(Y_gpr_test, Y_test_raw)
-        #      # gpr_test_sum_log_likelihood = sum_log_likelihood_norm(Y_test_raw, Y_gpr_test, Sig_gpr_test)
-
-        #      yerr=2*Sig_gpr_test
-        #      fig = plt.figure(figsize=(6.4, 4.8))
-        #      ax = fig.add_subplot(111)
-        #      ax.errorbar(Y_test_raw.flatten(), Y_gpr_test.flatten(), yerr=yerr.flatten(), fmt = "none", color = "g", marker=None, capsize = 4, elinewidth=0.5, alpha = 0.2, label="$\pm\sigma$ error bars", zorder=1) #capthick= , elinewidth=
-        #      ax.scatter(Y_test_raw, Y_gpr_test, c="b", marker=".", label="test predictions", zorder=2)
-        #      ax.plot(Y_test_raw, Y_test_raw, "k-", linewidth=1, label = "true", zorder=3)
-        #      ax.set_title(f"GPR fit (Test NRMSE={gpr_test_nrmse})")
-        #      ax.set_xlabel("Actual", fontsize=18)
-        #      ax.set_ylabel("Predicted", fontsize=18)
-        #      ax.legend(loc="lower right")
-        #      plt.savefig(f"{folder_name}/Actual vs Predicted GPR for constraint {c} (step {N_STEP}).png", dpi=300)
-        #      # plt.show()
-        #      plt.close(fig)
-
-        # GET OTHER ERROR METRICS
 
         # get predictions
         Yc_preds = N_constr*[None]
@@ -465,9 +329,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
             # Yc_pred, __ = predict_gpr(GPR_models[c], Xs_test_raw[c], x_stand_objs[c])
             Yc_pred, *_ = predict_ensemble(Xs_test_raw[c], e2nn_ensembles[c], emulator_function_lists[c], x_scale_objs[c], y_scale_objs[c])
             Yc_preds[c] = Yc_pred.flatten()
-        # 
-        
-
 
         print("Ys_test_raw[0].shape: ", Ys_test_raw[0].shape)
         print("Yc_preds[0].shape: ", Yc_preds[0].shape)
@@ -514,25 +375,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
 
         print("Beginning acquisition optimization")
 
-        # # EFF ACQUISITION
-        # if acquisition_function_name == "EGRA":
-        #     EFF = EGRA
-        # if acquisition_function_name == "EGRA4":
-        #     EFF = EGRA
-        # elif acquisition_function_name == "ALT":
-        #     EFF = ALT
-        # elif acquisition_function_name == "EMI":
-        #     EFF = EMI
-        # elif acquisition_function_name == "EMI4":
-        #     EFF = EMI
-        # elif acquisition_function_name == "EMRI":
-        #     EFF = EMRI
-        # elif acquisition_function_name == "EMRI4":
-        #     EFF = EMRI
-        # else:
-        #     raise ValueError(f"Unknown acquisition function name: {acquisition_function_name}")
-
-        # obj_fn = lambda x : -EFF(x, GPR_models, x_stand_objs)[0]
         EFF = EMI
         obj_fn = lambda x: -EFF(x, e2nn_ensembles, emulator_function_lists, x_scale_objs, y_scale_objs)[0]
 
@@ -548,30 +390,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
         for c in range(N_constr):
             eff_vals[c], __ = EFF(x_opt, [e2nn_ensembles[c]], [emulator_function_lists[c]], [x_scale_objs[c]], [y_scale_objs[c]])
 
-        # # EI ACQUISITION (REQUIRES SINGLE GPR_MODEL)
-        # obj_fn = lambda x: - EI_acquisition(x, GPR_MODEL, x_stand_obj)
-        # x_opt, f_opt, *__ = global_optimization(obj_fn, lb, ub, Ndim, n_scatter_init = 1_000,  n_local_opts = 10, previous_local_xopt = np.array([]), n_scatter_gauss = n_scatter_gauss)
-
-
-        # # UNCERTAINTY ACQUISITION (CAN SAMPLE MULTIPLE)
-        # def get_uncertainty(X_unscaled, GPR_MODEL, x_stand_obj):
-        #     __, Sig_gpr_test = predict_gpr(GPR_MODEL, X_unscaled, x_stand_obj)
-        #     return(Sig_gpr_test)
-        # obj_fn = lambda x : -get_uncertainty(x, GPR_MODEL, x_stand_obj)
-        # 
-        # x_opts = np.zeros(N_constr)
-        # f_opts = np.zeros(N_constr)
-        # for c in range(N_constr):
-        #     x_opts[c], f_opts[c], *__ = global_optimization(obj_fn, lb, ub, Ndim, n_scatter_init = 1_000,  n_local_opts = 10, previous_local_xopt = np.array([]), n_scatter_gauss = n_scatter_gauss)
-        # opt_idx = np.argmin(f_opts)
-        # x_opt = x_opts[opt_idx]
-        # f_opt = f_opts[opt_idx]
-
-
-        # # NEED CHANGES BECAUSE 3 DIFFERENT NRMSES AND SUMLOGLIKELIHOODS
-        # NRMSEs.append(gpr_test_nrmse)
-        # # np array when 1D, scalar otherwise
-        # SumLogLikelihoods.append(float(gpr_test_sum_log_likelihood))
 
         ################################################################################
         """ PLOTTING ACQUISITION """
@@ -669,14 +487,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
                 new_X[c] = np.array([])
             else:
                 new_X[c] = x_opt
-
-            # y_new = F(x_new)
-            # X_train_raw = np.vstack([X_train_raw, x_new])
-            # Y_train_raw = np.vstack([Y_train_raw, y_new])
-
-            # min_idx = np.argmin(Y_train_raw)
-            # Yopts.append(np.min(Y_train_raw))
-            # Xopts.append(X_train_raw[min_idx,:])
 
 
         # plot constraints and new points
@@ -784,45 +594,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
     with open(filename, "wb") as outfile:
         pickle.dump(data, outfile)
 
-    # # Optimal xs
-    # fig1 = plt.figure(figsize=(6.4, 4.8))
-    # ax = fig1.add_subplot(111)
-    # for ii in range(Ndim):
-    #     ax.plot(iters, Xopts[:,ii], "-", label = "Opt $X_"+str(ii)+"$", linewidth=2)
-    # ax.set_title("X history")
-    # ax.set_xlabel("iteration")
-    # ax.set_ylabel("Optimums")
-    # ax.legend(loc="upper left")
-    # plt.savefig("History X.png", dpi=300)
-    # plt.draw()
-
-
-    # # Optimal ys
-    # fig2 = plt.figure(figsize=(6.4, 4.8))
-    # ax = fig2.add_subplot(111)
-    # ax.plot(iters, Yopts, "k.-", label = "Yopt", linewidth=2)
-    # ax.set_title("Y history")
-    # ax.set_xlabel("iteration")
-    # ax.set_ylabel("Optimums")
-    # ax.legend(loc="upper right")
-    # plt.savefig("History Y.png")
-    # plt.draw()
-
-
-    # # Optimal ys log
-    # if np.all(Yopts>0):
-    #     fig3 = plt.figure(figsize=(6.4, 4.8))
-    #     ax = fig3.add_subplot(111)
-    #     ax.plot(iters, Yopts, "k.-", label = "Yopt", linewidth=2)
-    #     ax.set_title("Y history")
-    #     ax.set_xlabel("iteration")
-    #     ax.set_ylabel("Optimums")
-    #     ax.legend(loc="upper right")
-    #     plt.yscale("log")
-    #     plt.savefig("History Y log.png")
-    #     plt.draw()
-
-
 
     # EFF
     fig = plt.figure(figsize=(6.4, 4.8))
@@ -847,7 +618,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
     plt.yscale("log")
     plt.savefig(f"{folder_name}/History {acquisition_function_name} log.png")
     plt.close(fig)
-
 
 
     # Precision
@@ -894,193 +664,12 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
     plt.savefig(f"{folder_name}/History MCC.png")
     plt.close(fig)
 
-
-    # # NRMSE
-    # fig6 = plt.figure(figsize=(6.4, 4.8))
-    # ax = fig6.add_subplot(111)
-    # ax.plot(iters, NRMSEs, "g.-", label = "NRMSE", linewidth=2)
-    # ax.set_title("NRMSE history")
-    # ax.set_xlabel("iteration")
-    # ax.set_ylabel("NRMSE")
-    # ax.legend(loc="upper right")
-    # plt.savefig("History NRMSE.png")
-    # plt.draw()
-
-
-    # # NRMSE log
-    # fig7 = plt.figure(figsize=(6.4, 4.8))
-    # ax = fig7.add_subplot(111)
-    # ax.plot(iters, NRMSEs, "g.-", label = "NRMSE", linewidth=2)
-    # ax.set_title("NRMSE history")
-    # ax.set_xlabel("iteration")
-    # ax.set_ylabel("NRMSE")
-    # ax.legend(loc="upper right")
-    # plt.yscale("log")
-    # plt.savefig("History NRMSE log.png")
-    # plt.draw()
-
     return(None)
-
-
-
-
 
 
 
 ################################################################################
 """GAUSSIAN PROCESS MODELS"""
-
-# def fit_gpr(X_train_raw, Y_train_raw):
-#     """
-# 
-#     """
-# 
-#     ################################################################################
-#     """STANDARDIZE TRAINING DATA"""
-# 
-#     # scale data to 0 mean and unit variance using sk-learn
-#     from sklearn.preprocessing import StandardScaler
-#     x_stand_obj = StandardScaler().fit(X_train_raw) 
-#     X_train = x_stand_obj.transform(X_train_raw)
-#     # (Y data is scaled internally, so it doesn't need to be changed)
-# 
-#     ################################################################################
-#     """FIT GAUSSIAN PROCESS REGRESSION MODEL TO DATA"""
-# 
-#     print("Building GPR model")
-# 
-#     # construct gpr model and train on data
-#     from sklearn.gaussian_process import GaussianProcessRegressor
-#     from sklearn.gaussian_process.kernels import Matern, RBF
-# 
-#     # # Version 1: default optimizer
-#     # GPR = GaussianProcessRegressor( # kernel = Matern()
-#     #         kernel=1.0*RBF(1.0), normalize_y=True, alpha=1e-10, optimizer="fmin_l_bfgs_b",
-#     #         n_restarts_optimizer=250) #25) #25
-#     # GPR.fit(X_train, Y_train_raw)
-# 
-#     # Version 2: default optimizer but with extra objective evaluations
-#     callable_opt = lambda obj_func, th0, bounds : scipy.optimize.fmin_l_bfgs_b(obj_func, x0=th0, bounds=bounds, factr=10000000.0, pgtol=1e-05, epsilon=1e-08, maxfun=150_000, maxiter=150_000)[0:2] # default: maxfun=15_000, maxiter=15_000
-#     GPR = GaussianProcessRegressor( # kernel = Matern()
-#             kernel=1.0*RBF(1.0), normalize_y=True, alpha=1e-10, optimizer=callable_opt,
-#             n_restarts_optimizer=250) #32) #25) #
-#     GPR.fit(X_train, Y_train_raw)
-# 
-#     # print("kernel theta value: ", np.exp(GPR.kernel_.theta))
-#     # print("log_marginal_likelihood_value_: ", GPR.log_marginal_likelihood_value_)
-# 
-#     print("Done building GPR model")
-# 
-#     return(GPR, x_stand_obj)
-
-
-# def predict_gpr(gpr_model, X_pred_raw, x_stand_obj):
-#     """
-#     Outputs of gpr_model.predict() are flat regardless of the input shape
-#     """
-#     X_pred = x_stand_obj.transform(X_pred_raw)
-#     Y_pred_raw, Sig_pred_raw = gpr_model.predict(X_pred, return_std=True)
-#     return(Y_pred_raw, Sig_pred_raw)
-
-
-# def EI_acquisition(x, GPR_MODEL, x_stand_obj):
-#     """
-#     Compute Expected Improvement of GPR model
-#     """
-#     mu, sig = predict_gpr(GPR_MODEL, x, x_stand_obj)
-#     f_best = np.min(Y_train_raw)
-#     z = (f_best-mu)/sig
-#     EI = (f_best-mu)*norm.cdf(z) + sig*norm.pdf(z)
-#     return(EI)
-
-
-#  def EGRA(x, GPR_models, x_stand_objs):
-#      """ Original Bichon activation function """
-#      ys = [] #np.zeros(len(GPR_models))
-#      sigs = [] #np.zeros(len(GPR_models))
-#      for c, (GPR_model, x_stand_obj) in enumerate(zip(GPR_models, x_stand_objs)):
-#          y_c, sig_c = predict_gpr(GPR_model, x, x_stand_obj)
-#          y_c = y_c.reshape(-1, 1)
-#          sig_c = sig_c.reshape(-1, 1)
-#          ys.append(y_c)
-#          sigs.append(sig_c)
-#    
-#      ys = np.hstack(ys)
-#      sigs = np.hstack(sigs)
-#    
-#      c_idx = np.argmax(ys, axis=1)
-#      pt_idx = np.arange(ys.shape[0])
-#      mu = ys[pt_idx,c_idx]
-#      sig = sigs[pt_idx,c_idx]
-#  
-#      eps = np.finfo("float64").eps
-#      alpha = 2
-#      zbar = 0
-#      zp =  alpha*sig
-#      zm = -alpha*sig
-#  
-#      u1 = -mu/(sig+eps)
-#      u2 = (zp-mu)/(sig+eps)
-#      u3 = (zm-mu)/(sig+eps)
-#  
-#      CLS = mu*(2*norm.cdf(u1)-norm.cdf(u2)-norm.cdf(u3)) - sig*(2*norm.pdf(u1) - norm.pdf(u2)-norm.pdf(u3)) + alpha*sig*(norm.cdf(u2)-norm.cdf(u3))
-#    
-#      return(CLS, c_idx)
-
-
-# def ALT(x, GPR_models, x_stand_objs):
-#     """My alternative acquisition function"""
-#     ys = [] #np.zeros(len(GPR_models))
-#     sigs = [] #np.zeros(len(GPR_models))
-#     for c, (GPR_model, x_stand_obj) in enumerate(zip(GPR_models, x_stand_objs)):
-#         y_c, sig_c = predict_gpr(GPR_model, x, x_stand_obj)
-#         y_c = y_c.reshape(-1, 1)
-#         sig_c = sig_c.reshape(-1, 1)
-#         ys.append(y_c)
-#         sigs.append(sig_c)
-#     
-#     ys = np.hstack(ys)
-#     sigs = np.hstack(sigs)
-#     
-#     c_idx = np.argmax(ys, axis=1)
-#     pt_idx = np.arange(ys.shape[0])
-#     mu = ys[pt_idx,c_idx]
-#     sig = sigs[pt_idx,c_idx]
-# 
-#     eps = np.finfo("float64").eps
-# 
-#     const = 1
-#     # alt = -(np.abs(mu)+1)/(sig+eps)
-#     alt = (sig+eps)/(np.abs(mu)+1)
-#     return(alt, c_idx)
-
-
-# def EMI(x, GPR_models, x_stand_objs):
-#     """Expected Magnitude of Incorrectness (EMI)"""
-#     eps = np.finfo("float64").eps
-# 
-#     ys = [] #np.zeros(len(GPR_models))
-#     sigs = [] #np.zeros(len(GPR_models))
-#     for c, (GPR_model, x_stand_obj) in enumerate(zip(GPR_models, x_stand_objs)):
-#         y_c, sig_c = predict_gpr(GPR_model, x, x_stand_obj)
-#         y_c = y_c.reshape(-1, 1)
-#         sig_c = sig_c.reshape(-1, 1)
-#         ys.append(y_c)
-#         sigs.append(sig_c+eps)
-#   
-#     ys = np.hstack(ys)
-#     sigs = np.hstack(sigs)
-#   
-#     # choose index with highest probability of failure (not closest to failure)
-#     c_idx = np.argmax(ys/sigs, axis=1)
-#     pt_idx = np.arange(ys.shape[0])
-#     mu = ys[pt_idx,c_idx]
-#     sig = sigs[pt_idx,c_idx]
-#   
-#     # calculate EMI
-#     emi = -np.abs(mu)*norm.cdf(-np.abs(mu/sig))+sig*norm.pdf(mu/sig)
-#     return(emi, c_idx)
-
 
 def EMI(X_unscaled, e2nn_ensembles, emulator_function_lists, x_scale_objs, y_scale_objs):
     """Expected Magnitude of Incorrectness (EMI)"""
@@ -1115,74 +704,6 @@ def EMI(X_unscaled, e2nn_ensembles, emulator_function_lists, x_scale_objs, y_sca
     emi = -np.abs(mu)*t.cdf(-np.abs(z), df) + df/(df-1)*(1+z**2/df)*sig*t.pdf(z, df)
     return(emi, c_idx)
 
-
-
-# def EMRI(x, GPR_models, x_stand_objs):
-#     """
-#     Expected Magnitude of Incorrectness (EMI) 
-#     Now includes probability that changing a constraint to be feasible 
-#     changes nothing (because other constraints are infeasible)
-#     """
-#     eps = np.finfo("float64").eps
-# 
-#     ys = [] #np.zeros(len(GPR_models))
-#     sigs = [] #np.zeros(len(GPR_models))
-#     for c, (GPR_model, x_stand_obj) in enumerate(zip(GPR_models, x_stand_objs)):
-#         y_c, sig_c = predict_gpr(GPR_model, x, x_stand_obj)
-#         y_c = y_c.reshape(-1, 1)
-#         sig_c = sig_c.reshape(-1, 1)
-#         ys.append(y_c)
-#         sigs.append(sig_c+eps)
-#   
-#     ys = np.hstack(ys)
-#     sigs = np.hstack(sigs)
-#   
-#     # choose index with highest probability of failure (not closest to failure)
-#     p_failure = norm.cdf(ys/sigs)
-#     c_idx = np.argmax(p_failure, axis=1)
-# 
-#     pt_idx = np.arange(ys.shape[0])
-#     mu = ys[pt_idx,c_idx]
-#     sig = sigs[pt_idx,c_idx]
-#   
-# 
-#     # Get probabilities that all other constraints are feasible
-#     p_feasible = 1-p_failure
-#     mask_array = np.full(p_feasible.shape, True)
-#     mask_array[pt_idx, c_idx] = False
-#     new_shape = (mask_array.shape[0], mask_array.shape[1]-1)
-#     p_other_c_feasible = p_feasible[mask_array].reshape(new_shape)
-#     p_all_other_c_feasible = np.prod(p_other_c_feasible, axis=1)
-#     p_incorrectness_is_relevant = p_all_other_c_feasible
-# 
-#     # Incorrectness has to be relevent if current prediction is feasible
-#     pred_feasible_idx = mu<0
-#     p_incorrectness_is_relevant[pred_feasible_idx] = 1 
-# 
-#     # calculate EMI
-#     emi = -np.abs(mu)*norm.cdf(-np.abs(mu/sig))+sig*norm.pdf(mu/sig)
-#     emi = emi * p_incorrectness_is_relevant
-#     return(emi, c_idx)
-
-
-
-# def NRMSE(y_pred, y_true):
-#     """
-#     Normalized root mean squared error
-#     """
-#     y_pred = y_pred.flatten()
-#     y_true = y_true.flatten()
-#     y_mean = np.mean(y_true)
-#     additive_NRMSE = np.sqrt(np.sum((y_pred-y_true)**2)/np.sum((y_mean-y_true)**2))
-#     return(additive_NRMSE)
-
-# def sum_log_likelihood_norm(y_true, y_pred, scale):
-#     """
-#     returns the sum of log likelihoods for a normal distribution
-#     an error metric that takes model uncertainty or PDF into account
-#     """
-#     SLL = np.sum(norm.logpdf(y_true, loc=y_pred, scale=scale))
-#     return(SLL)
 
 ############################################################################
 """ OPTIMIZATION USING GAUSSIAN SCATTER"""
@@ -1447,97 +968,12 @@ def g3(X):
     Y = (x1-4)**3 - x2 + 2
     return(Y)
 
-def vehicle_side_impact(x, idx):
-    """
-    Failure modes:
-    L: Abdomon load
-    F: Pubic symphysis force
-    Du: Rib deflection upper
-    Dm: Rib deflection middle
-    Dl: Rib deflection lower
-    VCu: Viscous creiteria upper
-    VCm: Viscous creiteria middle
-    VCl:Viscous creiteria lower
-    VB: Velocity at B-pillar
-    VD: Velocity at door
-    """
-    x1 = x[:,0]
-    x2 = x[:,1]
-    x3 = x[:,2]
-    x4 = x[:,3]
-    x5 = x[:,4]
-    x6 = x[:,5]
-    x7 = x[:,6]
-    x8 = x[:,7]
-    x9 = x[:,8]
-    x10 = x[:,9]
-    x11 = x[:,10]
-    L = 1.16-0.3717*x2*x4-0.00931*x2*x10-0.484*x3*x9+0.01343*x6*x10
-    F = 4.72-0.5*x4-0.19*x2*x3-0.0122*x4*x10+0.009325*x6*x10+0.000191*x11**2
-    Du = 28.98+3.818*x3-4.2*x1*x2+0.0207*x5*x10+6.63*x6*x9-7.7*x7*x8+0.32*x9*x10
-    Dm = 33.86+2.95*x3+0.1792*x10-5.057*x1*x2-11.0*x2*x8-0.0215*x5*x10-9.98*x7*x8+22.0*x8*x9
-    Dl=46.36-9.9*x2-12.9*x1*x8+0.1107*x3*x10
-    VCu = 0.261-0.0159*x1*x2-0.188*x1*x8-0.019*x2*x7+0.0144*x3*x5+0.0008757*x5*x10+0.08045*x6*x9+0.00139*x8*x11+0.00001575*x10*x11
-    VCm = 0.214+0.00817*x5-0.131*x1*x8-0.0704*x1*x9+0.03099*x2*x6-0.018*x2*x7+0.0208*x3*x8+0.121*x3*x9-0.00364*x5*x6+0.0007715*x5*x10-0.0005354*x6*x10+0.00121*x8*x11
-    VCl = 0.74-0.61*x2-0.163*x3*x8+0.001232*x3*x10-0.166*x7*x9+0.227*x2**2
-    VB = 10.58-0.674*x1*x2-1.95*x2*x8+0.02054*x3*x10-0.0198*x4*x10+0.028*x6*x10
-    VD = 16.45-0.489*x3*x7-0.843*x5*x6+0.0432*x9*x10-0.0556*x9*x11-0.000786*x11**2
-    vals = [L, F, Du, Dm, Dl, VCu, VCm, VCl, VB, VD]
-    lims = [1.0, 4.01, 32.0, 32.0, 32.0, 0.32, 0.32, 0.32, 9.9, 15.69]
-    g_constr = vals[idx] - lims[idx]
-    return(g_constr)
-
-
-def constr1(x):
-    return vehicle_side_impact(x, 0)
-
-def constr2(x):
-    return vehicle_side_impact(x, 1)
-
-def constr3(x):
-    return vehicle_side_impact(x, 2)
-
-def constr4(x):
-    return vehicle_side_impact(x, 3)
-
-def constr5(x):
-    return vehicle_side_impact(x, 4)
-
-def constr6(x):
-    return vehicle_side_impact(x, 5)
-
-def constr7(x):
-    return vehicle_side_impact(x, 6)
-
-def constr8(x):
-    return vehicle_side_impact(x, 7)
-
-def constr9(x):
-    return vehicle_side_impact(x, 8)
-
-def constr10(x):
-    return vehicle_side_impact(x, 9)
-
-
-
-problem_iters = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
-acquisition_function_names = ["E2NN-EMI"]
-ratio = 4.0   # sample all within factor of 4
-
-# acquisition_function_names = ["EMI_E2NN_safe"]
-# ratio = np.inf   # sample all nonconverged
-
 if __name__ == "__main__":
     for acquisition_function_name in acquisition_function_names:
         for problem_iter in problem_iters:
-            run_egra_problem(acquisition_function_name, problem_iter, ratio=ratio)
+            run_active_learning(acquisition_function_name, problem_iter, ratio=ratio)
 
 
 print("\nProgram completed successfully")
 
 
-
-
-
-
-#

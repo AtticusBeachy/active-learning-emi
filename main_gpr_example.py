@@ -25,6 +25,15 @@ import os  # for making folders to put plots in
 
 from user_defined_test_functions import fun3d_simulation_lift_force
 
+
+################################################################################
+""" USER SELECTED OPTIONS """
+
+problem_iters = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+ratios = [4.0]  #[np.inf, 4.0]  #
+acquisition_function_names = ["GPR-EGRA", "GPR-EMI"]
+
+
 ################################################################################
 """HANDLING FIGURES"""
 
@@ -43,14 +52,9 @@ mpl.rc("ytick", labelsize=12)
 global global_parallel_acquisitions
 global_parallel_acquisitions = 0
 
-################################################################################
-""" What to run """
-problem_iters = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
-ratios = [4.0]  #[np.inf, 4.0]  #
-acquisition_function_names = ["GPR-EGRA", "GPR-EMI"]
 
 
-def run_egra_problem(acquisition_function_name, problem_iter, ratio):
+def run_active_learning(acquisition_function_name, problem_iter, ratio):
 
 
     ################################################################################
@@ -59,31 +63,14 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
     folder_name = f"{acquisition_function_name}_example_{problem_iter}"
     os.makedirs(folder_name, exist_ok=True)
 
-    ################################################################################
-    """GET FUNCTIONS"""
-
-    # Ntest = 4000 #200 #10_000  #1000  # use fewer when plotting test error convergence
     n_scatter_gauss = 128  #32  #64  #256 #
 
-    # # F = nonstationary_1d_hf
-    # # # Fe = [nonstationary_1d_lf]
-    # # # Fe = [uninformative_1d]
-    # # lb = np.zeros([Ndim]) #0.0 # -2 + np.zeros([Ndim]) #np.array([-2, -2])
-    # # ub = np.ones([Ndim]) #1.0 #  2 + np.zeros([Ndim]) #np.array([ 2,  2])
-    # # 
-    # # # Rosenbrock (nd)
-    # # Ndim = 2 #1 #10 
-    # # Nsamp = 8 #(Ndim+1)*(Ndim+2)//2 #20 #1000
-    # # F = rosenbrock
-    # # # Fe = [uninformative_nd_lf]
-    # # lb = -2*np.ones([Ndim]) #0.0 # -2 + np.zeros([Ndim]) #np.array([-2, -2])
-    # # ub = 2*np.ones([Ndim]) #1.0 #  2 + np.zeros([Ndim]) #np.array([ 2,  2])
-
-    # Nemulator = len(Fe)
+    ################################################################################
+    """PROBLEM SELECTION (UNCOMMENT THE DISIRED ONE)"""
 
     # (1) 2D rosenbrock
     Ndim = 2 #1 #10 #3 #2 #3 #1 #2
-    Nsamp = 8 #(Ndim+1)*(Ndim+2)//2 #8 #20 #3000 #2000 #1500 #1000 #500 #300 #200 #10*Ndim #6 #20 #8
+    Nsamp = 8 #(Ndim+1)*(Ndim+2)//2 #
     Fs = [constr_rosen_2d]
     lb = -2*np.ones([Ndim])
     ub = 2*np.ones([Ndim])
@@ -94,7 +81,7 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
 
     # # (2) multimodal system
     # Ndim = 2 #1 #10 #3 #2 #3 #1 #2
-    # Nsamp = 8 #(Ndim+1)*(Ndim+2)//2 #8 #20 #3000 #2000 #1500 #1000 #500 #300 #200 #10*Ndim #6 #20 #8
+    # Nsamp = 8 #(Ndim+1)*(Ndim+2)//2 #8 #
     # Fs = [g1, g2, g3]
     # lb = np.array([-3., 0.])
     # ub = np.array([7., 10.])
@@ -102,53 +89,23 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
     # Ntest = 10_000
     # HF_EXPENSIVE = False
 
-
-    # # (3) vehicle side impact
-    # #Fs = [lambda x: vehicle_side_impact(x, idx) for idx in range(10)]
-    # Fs = [constr1, constr2, constr3, constr4, constr5, constr6, constr7, constr8, constr9, constr10]
-    # x_mu = np.array([0.5, 1.31, 0.5, 1.395, 0.875, 1.2, 0.4, 0.345, 0.192, 0.0, 0.0])
-    # x_sig = np.array([0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.006, 0.006, 10.0, 10.0])
-    # lb = x_mu - 5*x_sig
-    # ub = x_mu + 5*x_sig
-    # N_constr = len(Fs)
-    # Ndim = 11
-    # Nsamp = (Ndim+1)*(Ndim+2)//2 #8 #20  #1000 #
-    # Ntest = 10_000
-    # HF_EXPENSIVE = False
-
-
-    # # (4) D-dim Rosenbrock
-    # Ndim = 10  #20  #1  #
-    # Nsamp = (Ndim+1)*(Ndim+2)//2 #20 #1000
-    # Fs = [rosenbrock]
-    # # Fe = [uninformative_nd_lf]
-    # lb = -2*np.ones([Ndim]) #0.0 # -2 + np.zeros([Ndim]) #np.array([-2, -2])
-    # ub = 2*np.ones([Ndim]) #1.0 #  2 + np.zeros([Ndim]) #np.array([ 2,  2])
-    # N_constr = len(Fs)
-    # Ntest = 10_000
-    # HF_EXPENSIVE = False
     
-    # (5) Aircraft lift force
-    Ndim = 3
-    Nsamp = (Ndim+1)*(Ndim+2)//2
-    Ntest = 4000
-    subfolder2 = "GHV_34k_i_CGNS"  #"GHV_300k_i_CGNS"   #
-    out_name2  = "GHV_fgrid_coarse01"  #"GHV02_300k"   #
+    # # (3) Aircraft lift force
+    # Ndim = 3
+    # Nsamp = (Ndim+1)*(Ndim+2)//2
+    # Ntest = 4000
+    # subfolder2 = "GHV_34k_i_CGNS"  #"GHV_300k_i_CGNS"   #
+    # out_name2  = "GHV_fgrid_coarse01"  #"GHV02_300k"   #
 
-    MINIMUM_LIFT = 1e4  #25e6  #N
-    lift_constr = lambda x: fun3d_simulation_lift_force(
-        x, out_name2, subfolder2).flatten() - MINIMUM_LIFT
-    Fs = [lift_constr]
-    lb = np.zeros(Ndim)
-    ub = np.ones(Ndim)
-    N_constr = len(Fs)
-    HF_EXPENSIVE = True
+    # MINIMUM_LIFT = 1e4  #25e6  #N
+    # lift_constr = lambda x: fun3d_simulation_lift_force(
+    #     x, out_name2, subfolder2).flatten() - MINIMUM_LIFT
+    # Fs = [lift_constr]
+    # lb = np.zeros(Ndim)
+    # ub = np.ones(Ndim)
+    # N_constr = len(Fs)
+    # HF_EXPENSIVE = True
 
-    azim_2d = -120 #-150 #-60 # -60 (default) #
-    elev_2d = 20 # 30 (default) #
-    # ax.azim = -60
-    # ax.dist = 10
-    # ax.elev = 30
 
     ################################################################################
     """GET TRAINING DATA"""
@@ -232,31 +189,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
             # END Get samples using LHS
         X_test_raw = (ub-lb)*X_test + lb
         # Y_test_raw = F(X_test_raw)
-
-
-    # if Ndim==1:
-    #     # Make prediction with GPR model
-    #     X_gpr = X_test_raw.copy()
-    #     gpr_model, x_stand_obj = fit_gpr(X_train_raw, Y_train_raw)
-    #     Y_gpr, Sig_gpr = predict_gpr(gpr_model, X_gpr, x_stand_obj)
-
-    #     plt.figure()
-    #     plt.plot(X_test_raw, Y_test_raw, "k-", linewidth=1.5, label="true")
-    #     plt.scatter(X_train_raw, Y_train_raw, c="k", label="data")
-    #     plt.plot(X_gpr, Y_gpr, "b-", linewidth=1.5, label="GPR prediction")
-    #     plt.fill_between(
-    #         X_gpr.flatten(), 
-    #         Y_gpr-1.96*Sig_gpr, 
-    #         Y_gpr+1.96*Sig_gpr, 
-    #         alpha=0.5, 
-    #         label="95% confidence prediction")
-    #     plt.legend()
-    #     plt.title("GPR model trained on data")
-    #     plt.savefig("basic_gpr_example.png", dpi=300)
-    #     plt.show()
-    #     plt.close()
-
-
 
     ################################################################################
     ################################################################################
@@ -418,16 +350,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
             EFF = EGRA
         elif acquisition_function_name == "GPR-EMI":
             EFF = EMI
-        # elif acquisition_function_name == "EMI":
-        #     EFF = EMI
-        # elif acquisition_function_name == "EMI4":
-        #     EFF = EMI
-        # elif acquisition_function_name == "EMRI":
-        #     EFF = EMRI
-        # elif acquisition_function_name == "EMRI4":
-        #     EFF = EMRI
-        # elif acquisition_function_name == "U":
-        #     EFF = NU
         else:
             raise ValueError(f"Unknown acquisition function name: {acquisition_function_name}")
 
@@ -446,32 +368,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
         for c in range(N_constr):
             eff_vals[c], __ = EFF(x_opt, [GPR_models[c]], [x_stand_objs[c]])
 
-        
-
-        # # EI ACQUISITION (REQUIRES SINGLE GPR_MODEL)
-        # obj_fn = lambda x: - EI_acquisition(x, GPR_MODEL, x_stand_obj)
-        # x_opt, f_opt, *__ = global_optimization(obj_fn, lb, ub, Ndim, n_scatter_init = 1_000,  n_local_opts = 10, previous_local_xopt = np.array([]), n_scatter_gauss = n_scatter_gauss)
-
-
-        # # UNCERTAINTY ACQUISITION (CAN SAMPLE MULTIPLE)
-        # def get_uncertainty(X_unscaled, GPR_MODEL, x_stand_obj):
-        #     __, Sig_gpr_test = predict_gpr(GPR_MODEL, X_unscaled, x_stand_obj)
-        #     return(Sig_gpr_test)
-        # obj_fn = lambda x : -get_uncertainty(x, GPR_MODEL, x_stand_obj)
-        # 
-        # x_opts = np.zeros(N_constr)
-        # f_opts = np.zeros(N_constr)
-        # for c in range(N_constr):
-        #     x_opts[c], f_opts[c], *__ = global_optimization(obj_fn, lb, ub, Ndim, n_scatter_init = 1_000,  n_local_opts = 10, previous_local_xopt = np.array([]), n_scatter_gauss = n_scatter_gauss)
-        # opt_idx = np.argmin(f_opts)
-        # x_opt = x_opts[opt_idx]
-        # f_opt = f_opts[opt_idx]
-
-
-        # # NEED CHANGES BECAUSE 3 DIFFERENT NRMSES AND SUMLOGLIKELIHOODS
-        # NRMSEs.append(gpr_test_nrmse)
-        # # np array when 1D, scalar otherwise
-        # SumLogLikelihoods.append(float(gpr_test_sum_log_likelihood))
 
         ################################################################################
         """ PLOTTING ACQUISITION """
@@ -527,17 +423,12 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
         # SAVE DATA
         for c in range(N_constr):
             doc1 = open(f"{folder_name}/sample data step {N_STEP} constr{c}.txt","w")
-            # doc1.write(f"Xs_train_raw[c]: {Xs_train_raw[c]}\n")
-            # doc1.write(f"Ys_train_raw[c]: {Ys_train_raw[c]}\n")
             doc1.write(f"EFFs: {EFFs}\n")
             doc1.write(f"Precisions: {Precisions}\n")
             doc1.write(f"Recalls: {Recalls}\n")
             doc1.write(f"F1_scores: {F1_scores}\n")
             doc1.write(f"MCCs: {MCCs}\n")
             doc1.write(f"total_samples: {total_samples}\n")
-            # doc1.write("Yopts: "+str(Yopts)+"\n")
-            # doc1.write("NRMSEs: "+str(NRMSEs)+"\n")
-            # doc1.write("SumLogLikelihoods: "+str(SumLogLikelihoods)+"\n")
             doc1.close()
 
 
@@ -572,14 +463,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
                 new_X[c] = np.array([])
             else:
                 new_X[c] = x_opt
-
-            # y_new = F(x_new)
-            # X_train_raw = np.vstack([X_train_raw, x_new])
-            # Y_train_raw = np.vstack([Y_train_raw, y_new])
-
-            # min_idx = np.argmin(Y_train_raw)
-            # Yopts.append(np.min(Y_train_raw))
-            # Xopts.append(X_train_raw[min_idx,:])
 
 
         # plot constraints and new points
@@ -619,7 +502,7 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
 
             # plt.grid(False)
             colors = ["r", "b", "g"]
-            markers = [mpl.markers.MarkerStyle("o", fillstyle="none"),"x","+"] #["1","2","3"] #["x","+","."] #["o", "+", "x"] #["o","P","X"] #
+            markers = [mpl.markers.MarkerStyle("o", fillstyle="none"),"x","+"]
 
 
             # shade predicted infeasible
@@ -686,45 +569,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
     }
     with open(filename, "wb") as outfile:
         pickle.dump(data, outfile)
-
-    # # Optimal xs
-    # fig1 = plt.figure(figsize=(6.4, 4.8))
-    # ax = fig1.add_subplot(111)
-    # for ii in range(Ndim):
-    #     ax.plot(iters, Xopts[:,ii], "-", label = "Opt $X_"+str(ii)+"$", linewidth=2)
-    # ax.set_title("X history")
-    # ax.set_xlabel("iteration")
-    # ax.set_ylabel("Optimums")
-    # ax.legend(loc="upper left")
-    # plt.savefig("History X.png", dpi=300)
-    # plt.draw()
-
-
-    # # Optimal ys
-    # fig2 = plt.figure(figsize=(6.4, 4.8))
-    # ax = fig2.add_subplot(111)
-    # ax.plot(iters, Yopts, "k.-", label = "Yopt", linewidth=2)
-    # ax.set_title("Y history")
-    # ax.set_xlabel("iteration")
-    # ax.set_ylabel("Optimums")
-    # ax.legend(loc="upper right")
-    # plt.savefig("History Y.png")
-    # plt.draw()
-
-
-    # # Optimal ys log
-    # if np.all(Yopts>0):
-    #     fig3 = plt.figure(figsize=(6.4, 4.8))
-    #     ax = fig3.add_subplot(111)
-    #     ax.plot(iters, Yopts, "k.-", label = "Yopt", linewidth=2)
-    #     ax.set_title("Y history")
-    #     ax.set_xlabel("iteration")
-    #     ax.set_ylabel("Optimums")
-    #     ax.legend(loc="upper right")
-    #     plt.yscale("log")
-    #     plt.savefig("History Y log.png")
-    #     plt.draw()
-
 
 
     # EFF
@@ -798,30 +642,6 @@ def run_egra_problem(acquisition_function_name, problem_iter, ratio):
     plt.close(fig)
 
 
-    # # NRMSE
-    # fig6 = plt.figure(figsize=(6.4, 4.8))
-    # ax = fig6.add_subplot(111)
-    # ax.plot(iters, NRMSEs, "g.-", label = "NRMSE", linewidth=2)
-    # ax.set_title("NRMSE history")
-    # ax.set_xlabel("iteration")
-    # ax.set_ylabel("NRMSE")
-    # ax.legend(loc="upper right")
-    # plt.savefig("History NRMSE.png")
-    # plt.draw()
-
-
-    # # NRMSE log
-    # fig7 = plt.figure(figsize=(6.4, 4.8))
-    # ax = fig7.add_subplot(111)
-    # ax.plot(iters, NRMSEs, "g.-", label = "NRMSE", linewidth=2)
-    # ax.set_title("NRMSE history")
-    # ax.set_xlabel("iteration")
-    # ax.set_ylabel("NRMSE")
-    # ax.legend(loc="upper right")
-    # plt.yscale("log")
-    # plt.savefig("History NRMSE log.png")
-    # plt.draw()
-
     return(None)
 
 
@@ -882,17 +702,6 @@ def predict_gpr(gpr_model, X_pred_raw, x_stand_obj):
     return(Y_pred_raw, Sig_pred_raw)
 
 
-def EI_acquisition(x, GPR_MODEL, x_stand_obj):
-    """
-    Compute Expected Improvement of GPR model
-    """
-    mu, sig = predict_gpr(GPR_MODEL, x, x_stand_obj)
-    f_best = np.min(Y_train_raw)
-    z = (f_best-mu)/sig
-    EI = (f_best-mu)*norm.cdf(z) + sig*norm.pdf(z)
-    return(EI)
-
-
 def EGRA(x, GPR_models, x_stand_objs):
     """ Original Bichon activation function """
     ys = [] #np.zeros(len(GPR_models))
@@ -927,58 +736,6 @@ def EGRA(x, GPR_models, x_stand_objs):
     return(CLS, c_idx)
 
 
-def NU(x, GPR_models, x_stand_objs):
-    """ Negative of U-function """
-    ys = [] #np.zeros(len(GPR_models))
-    sigs = [] #np.zeros(len(GPR_models))
-    for c, (GPR_model, x_stand_obj) in enumerate(zip(GPR_models, x_stand_objs)):
-        y_c, sig_c = predict_gpr(GPR_model, x, x_stand_obj)
-        y_c = y_c.reshape(-1, 1)
-        sig_c = sig_c.reshape(-1, 1)
-        ys.append(y_c)
-        sigs.append(sig_c)
-  
-    ys = np.hstack(ys)
-    sigs = np.hstack(sigs)
-  
-    c_idx = np.argmax(ys, axis=1)
-    pt_idx = np.arange(ys.shape[0])
-    mu = ys[pt_idx,c_idx]
-    sig = sigs[pt_idx,c_idx]
-
-    eps = np.finfo("float64").eps
-    U = np.abs(mu)/(sig+eps)
-  
-    return(-U, c_idx)
-
-
-def ALT(x, GPR_models, x_stand_objs):
-    """My alternative acquisition function"""
-    ys = [] #np.zeros(len(GPR_models))
-    sigs = [] #np.zeros(len(GPR_models))
-    for c, (GPR_model, x_stand_obj) in enumerate(zip(GPR_models, x_stand_objs)):
-        y_c, sig_c = predict_gpr(GPR_model, x, x_stand_obj)
-        y_c = y_c.reshape(-1, 1)
-        sig_c = sig_c.reshape(-1, 1)
-        ys.append(y_c)
-        sigs.append(sig_c)
-    
-    ys = np.hstack(ys)
-    sigs = np.hstack(sigs)
-    
-    c_idx = np.argmax(ys, axis=1)
-    pt_idx = np.arange(ys.shape[0])
-    mu = ys[pt_idx,c_idx]
-    sig = sigs[pt_idx,c_idx]
-
-    eps = np.finfo("float64").eps
-
-    const = 1
-    # alt = -(np.abs(mu)+1)/(sig+eps)
-    alt = (sig+eps)/(np.abs(mu)+1)
-    return(alt, c_idx)
-
-
 def EMI(x, GPR_models, x_stand_objs):
     """Expected Magnitude of Incorrectness (EMI)"""
     eps = np.finfo("float64").eps
@@ -1004,55 +761,6 @@ def EMI(x, GPR_models, x_stand_objs):
     # calculate EMI
     emi = -np.abs(mu)*norm.cdf(-np.abs(mu/sig))+sig*norm.pdf(mu/sig)
     return(emi, c_idx)
-
-
-def EMRI(x, GPR_models, x_stand_objs):
-    """
-    Expected Magnitude of Incorrectness (EMI) 
-    Now includes probability that changing a constraint to be feasible 
-    changes nothing (because other constraints are infeasible)
-    """
-    eps = np.finfo("float64").eps
-
-    ys = [] #np.zeros(len(GPR_models))
-    sigs = [] #np.zeros(len(GPR_models))
-    for c, (GPR_model, x_stand_obj) in enumerate(zip(GPR_models, x_stand_objs)):
-        y_c, sig_c = predict_gpr(GPR_model, x, x_stand_obj)
-        y_c = y_c.reshape(-1, 1)
-        sig_c = sig_c.reshape(-1, 1)
-        ys.append(y_c)
-        sigs.append(sig_c+eps)
-  
-    ys = np.hstack(ys)
-    sigs = np.hstack(sigs)
-  
-    # choose index with highest probability of failure (not closest to failure)
-    p_failure = norm.cdf(ys/sigs)
-    c_idx = np.argmax(p_failure, axis=1)
-
-    pt_idx = np.arange(ys.shape[0])
-    mu = ys[pt_idx,c_idx]
-    sig = sigs[pt_idx,c_idx]
-  
-
-    # Get probabilities that all other constraints are feasible
-    p_feasible = 1-p_failure
-    mask_array = np.full(p_feasible.shape, True)
-    mask_array[pt_idx, c_idx] = False
-    new_shape = (mask_array.shape[0], mask_array.shape[1]-1)
-    p_other_c_feasible = p_feasible[mask_array].reshape(new_shape)
-    p_all_other_c_feasible = np.prod(p_other_c_feasible, axis=1)
-    p_incorrectness_is_relevant = p_all_other_c_feasible
-
-    # Incorrectness has to be relevent if current prediction is feasible
-    pred_feasible_idx = mu<0
-    p_incorrectness_is_relevant[pred_feasible_idx] = 1 
-
-    # calculate EMI
-    emi = -np.abs(mu)*norm.cdf(-np.abs(mu/sig))+sig*norm.pdf(mu/sig)
-    emi = emi * p_incorrectness_is_relevant
-    return(emi, c_idx)
-
 
 
 def NRMSE(y_pred, y_true):
@@ -1302,14 +1010,6 @@ def constr_rosen_2d(X):
     boundary = 10
     return rosenbrock(X) - boundary
 
-# def nonstationary_1d_hf(X):
-#     """
-#     A nonstationary 1dim HF function commonly used as as example
-#     X: A numpy array (I think it can be a 1D or 2D array, but not sure)
-#     """
-#     Y = (6*X-2)**2 * np.sin(12*X-4)
-#     # Y = (6*X-2)**2 + 10*X**5
-#     return(Y)
 
 
 def g1(X):
@@ -1345,120 +1045,14 @@ def g3(X):
     Y = (x1-4)**3 - x2 + 2
     return(Y)
 
-def vehicle_side_impact(x, idx):
-    """
-    Failure modes:
-    L: Abdomon load
-    F: Pubic symphysis force
-    Du: Rib deflection upper
-    Dm: Rib deflection middle
-    Dl: Rib deflection lower
-    VCu: Viscous creiteria upper
-    VCm: Viscous creiteria middle
-    VCl:Viscous creiteria lower
-    VB: Velocity at B-pillar
-    VD: Velocity at door
-    """
-    x1 = x[:,0]
-    x2 = x[:,1]
-    x3 = x[:,2]
-    x4 = x[:,3]
-    x5 = x[:,4]
-    x6 = x[:,5]
-    x7 = x[:,6]
-    x8 = x[:,7]
-    x9 = x[:,8]
-    x10 = x[:,9]
-    x11 = x[:,10]
-    L = 1.16-0.3717*x2*x4-0.00931*x2*x10-0.484*x3*x9+0.01343*x6*x10
-    F = 4.72-0.5*x4-0.19*x2*x3-0.0122*x4*x10+0.009325*x6*x10+0.000191*x11**2
-    Du = 28.98+3.818*x3-4.2*x1*x2+0.0207*x5*x10+6.63*x6*x9-7.7*x7*x8+0.32*x9*x10
-    Dm = 33.86+2.95*x3+0.1792*x10-5.057*x1*x2-11.0*x2*x8-0.0215*x5*x10-9.98*x7*x8+22.0*x8*x9
-    Dl=46.36-9.9*x2-12.9*x1*x8+0.1107*x3*x10
-    VCu = 0.261-0.0159*x1*x2-0.188*x1*x8-0.019*x2*x7+0.0144*x3*x5+0.0008757*x5*x10+0.08045*x6*x9+0.00139*x8*x11+0.00001575*x10*x11
-    VCm = 0.214+0.00817*x5-0.131*x1*x8-0.0704*x1*x9+0.03099*x2*x6-0.018*x2*x7+0.0208*x3*x8+0.121*x3*x9-0.00364*x5*x6+0.0007715*x5*x10-0.0005354*x6*x10+0.00121*x8*x11
-    VCl = 0.74-0.61*x2-0.163*x3*x8+0.001232*x3*x10-0.166*x7*x9+0.227*x2**2
-    VB = 10.58-0.674*x1*x2-1.95*x2*x8+0.02054*x3*x10-0.0198*x4*x10+0.028*x6*x10
-    VD = 16.45-0.489*x3*x7-0.843*x5*x6+0.0432*x9*x10-0.0556*x9*x11-0.000786*x11**2
-    vals = [L, F, Du, Dm, Dl, VCu, VCm, VCl, VB, VD]
-    lims = [1.0, 4.01, 32.0, 32.0, 32.0, 0.32, 0.32, 0.32, 9.9, 15.69]
-    g_constr = vals[idx] - lims[idx]
-    return(g_constr)
-
-
-def constr1(x):
-    return vehicle_side_impact(x, 0)
-
-def constr2(x):
-    return vehicle_side_impact(x, 1)
-
-def constr3(x):
-    return vehicle_side_impact(x, 2)
-
-def constr4(x):
-    return vehicle_side_impact(x, 3)
-
-def constr5(x):
-    return vehicle_side_impact(x, 4)
-
-def constr6(x):
-    return vehicle_side_impact(x, 5)
-
-def constr7(x):
-    return vehicle_side_impact(x, 6)
-
-def constr8(x):
-    return vehicle_side_impact(x, 7)
-
-def constr9(x):
-    return vehicle_side_impact(x, 8)
-
-def constr10(x):
-    return vehicle_side_impact(x, 9)
-
-
-
-
-
-# problem_iters = [1,2,3,4,5,6,7,8,9,10] #[6,7,8,9,10]
-# problem_iters = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,\
-#                  17,18,19,20,21,22,23,24,25,26,27,28,29,30,\
-#                  31,32]
-# problem_iters = [17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32]
-#folder_name_root = "ALT_example" #"EGRA_example" #"EMI_example" #"EMI_adv_example" #
-# acquisition_function_name = "EGRA"  #"EMRI"  #"EMI"  #"ALT"  #
-# acquisition_function_names = ["EGRA4", "EMRI4"]  #["EMI4"] #["EGRA", "EMI", "EMRI"]
-
-# ratio = np.inf
-# acquisition_function_names = ["EGRA", "EMI", "EMRI"]
-# for problem_iter in problem_iters:
-#     for acquisition_function_name in acquisition_function_names:
-#         run_egra_problem(acquisition_function_name, problem_iter, ratio)
-
-
-# ratio = 4.0
-# acquisition_function_names = ["EGRA4", "EMI4", "EMRI4"]
-# for problem_iter in problem_iters:
-#     for acquisition_function_name in acquisition_function_names:
-#         run_egra_problem(acquisition_function_name, problem_iter, ratio)
-
-
-# ratio = np.inf  #sample all nonconverged constraints
-# ratio = 0.0  #only sample one constraint (or none?)
 
 for problem_iter in problem_iters:
     for ratio, acquisition_function_name in zip(
         ratios, acquisition_function_names):
         # run
-        run_egra_problem(acquisition_function_name, problem_iter, ratio)
+        run_active_learning(acquisition_function_name, problem_iter, ratio)
 
 
 
 print("\nProgram completed successfully")
 
-
-
-
-
-
-#

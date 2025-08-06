@@ -35,11 +35,6 @@ def build_e2nn_two_layer(x_train, y_train, emulator_train,
         return init_weights_bias
 
 
-    # def init_weights_bias(m, bias_range):
-    #     if isinstance(m, nn.Linear):
-    #         torch.nn.init.xavier_normal_(m.weight)
-    #         torch.nn.init.uniform_(m.bias, a=0, b=2*np.pi)
-
     # Define the neural network model
     class ModelTwoLayerSwish(nn.Module):
         def __init__(self, x_size, em_size, hidden_size_L1, hidden_size_L2,
